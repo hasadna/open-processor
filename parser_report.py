@@ -1,7 +1,7 @@
 import os
 import json
-import openpyxl
-import time
+import excel_adapter
+
 
 class ExcelParser:
     FIRST_TABLE = None
@@ -21,25 +21,32 @@ class ExcelParser:
         :return: parsed data :type: dictionary
             """
         # Load in the workbook file
-        workbook = openpyxl.load_workbook(file_path)
+        try:
+            self._workbook = excel_adapter.ExcelLoader(file_path=file_path, logger=self._logger)
+        except Exception as ex:
+            self._logger.error("Failed to load {0}".format(ex))
+            return False
 
-        if not workbook:
+        if not self._workbook:
             self._logger.error("Failed to load excel file")
             return False
 
         # Move over the all sheets
-        for sheet_name in workbook.sheetnames:
-            if workbook[sheet_name].title == 'סכום נכסי הקרן':
+        for sheet_name in self._workbook.sheet_names:
+            if sheet_name == 'סכום נכסי הקרן':
                 # :todo: need parse this sheet ?
                 continue
             # Parse sheet
-            if not self._parse_sheet(sheet=workbook[sheet_name]):
+            sheet_data = self._parse_sheet(sheet_name=sheet_name)
+            if not sheet_name:
                 self._logger.error("Failed to parser sheet {0}".format(sheet_name))
+                continue
+            yield sheet_data
 
-    def _parse_sheet(self, sheet, start_row=0, start_column=2):
+    def _parse_sheet(self, sheet_name, start_row=0, start_column=2):
         """
         Parse excel pension report sheet
-        :param sheet: openpyxl sheet obj
+        :param sheet_name: sheet name
         :param start_row: row number to start
         :param start_column: column numbrt to start
         :return: True / False
@@ -51,7 +58,7 @@ class ExcelParser:
 
         data = {
             "metadata": {
-                "אפיק השקעה": sheet.title
+                "אפיק השקעה": sheet_name
 
             },
             "data": {}
@@ -65,9 +72,9 @@ class ExcelParser:
                     data["metadata"][metadata[0]] = metadata[1]
 
             current_row += 1
-            row_data = ExcelAdapter.get_entire_row(sheet=sheet,
-                                                   row=current_row,
-                                                   min_column=current_column)
+            row_data = self._workbook.get_entire_row(sheet_name=sheet_name,
+                                                     row=current_row,
+                                                     min_column=current_column)
 
             if row_data:
                 # strip all spaces from start and end string
@@ -76,9 +83,9 @@ class ExcelParser:
                 current_cell = None
         else:
             # Get fields name
-            fields_name = ExcelAdapter.get_entire_row(sheet=sheet,
-                                                      row=current_row,
-                                                      min_column=start_column)
+            fields_name = self._workbook.get_entire_row(sheet_name=sheet_name,
+                                                        row=current_row,
+                                                        min_column=start_column)
 
             fields_len = len(fields_name)
 
@@ -87,15 +94,15 @@ class ExcelParser:
         while current_cell != '* בעל ענין/צד קשור':
 
             if empty_len > 5:
-                # self._logger.warn("max empty row")
+                # self._logger.info("max empty row")
                 break
 
             # Get next row
             current_row += 1
-            data_row = ExcelAdapter.get_entire_row(sheet=sheet,
-                                                   row=current_row,
-                                                   min_column=start_column,
-                                                   max_column=fields_len+start_column)
+            data_row = self._workbook.get_entire_row(sheet_name=sheet_name,
+                                                     row=current_row,
+                                                     min_column=start_column,
+                                                     max_column=fields_len+start_column)
 
             # Check if is empty row or first cell is empty
             if not data_row or not data_row[0]:
@@ -118,11 +125,7 @@ class ExcelParser:
                     except IndexError as ex:
                         self._logger.error("Failed {0} {1}".format(ex, fields_name))
 
-        # print(data)
-        path = '/tmp'
-        file_name = "{0}.json".format(data["metadata"]['אפיק השקעה'])
-        self._save_to_json_file(path=path, file_name=file_name, data=data)
-        return True
+        return data
 
     def _get_metadata(self, data):
         """
@@ -173,70 +176,6 @@ class ExcelParser:
 
         # print(self._total_data)
 
-    def _save_to_json_file(self, path, file_name, data):
-        if not os.path.isdir(path):
-            self._logger.error("folder not exists {0}".format(path))
-
-        full_path = os.path.join(path,file_name)
-        try:
-            with open(full_path, "w") as outfile:
-                json.dump(data, outfile)
-            return True
-        except Exception as ex:
-            self._logger.error("Failed to write json file {0}".format(ex))
-            return False
-
-
-class ExcelAdapter:
-    @staticmethod
-    def get_cell(sheet, row, column):
-        """
-        Get cell value
-        :param sheet:
-        :param row:
-        :param column:
-        :return:
-        """
-        try:
-            return sheet.cell(row=row, column=column).value
-        except Exception as ex:
-            raise Exception("Failed to read cell {0}".format(ex))
-
-    @staticmethod
-    def get_entire_row(sheet, row, min_column=1, max_column=None):
-        """
-        Get row between min column number to max column number
-        if max column is None, get all cells until cell data is None
-        :param sheet:
-        :param row:
-        :param min_column:
-        :return: row data :type: list
-        """
-        cell_data = None
-        row_data = []
-        column = min_column
-
-        # lambdas function
-        data_exists = lambda: True if cell_data else False
-        is_not_max_column = lambda: not(max_column == column)
-
-        # If max column than use is_not_max_column lambda to check if is the max column
-        # If max column is None, use data_exists lambda to check if cell data exists
-        if max_column:
-            check = is_not_max_column
-        else:
-            check = data_exists
-
-        # Get cell data
-        cell_data = ExcelAdapter.get_cell(sheet=sheet, column=column, row=row)
-
-        while check():
-            row_data.append(cell_data)
-            column += 1
-            cell_data = ExcelAdapter.get_cell(sheet=sheet, column=column, row=row)
-
-        return row_data
-
 
 class FakeLogger:
     def error(self, msg):
@@ -248,7 +187,26 @@ class FakeLogger:
     def warn(self,msg):
         print("warring {0}".format(msg))
 
+
+def save_to_json_file(path, file_name, data):
+    if not os.path.isdir(path):
+        raise Exception("folder not exists {0}".format(path))
+
+    full_path = os.path.join(path, file_name)
+    try:
+        with open(f ull_path, "w") as outfile:
+            json.dump(data, outfile)
+        return True
+    except Exception as ex:
+        raise ValueError("Failed to write json file {0}".format(ex))
+
+
 if __name__ == '__main__':
     logger = FakeLogger()
     process_xl = ExcelParser(logger=logger)
-    process_xl.parse_file(file_path="test.xlsx")
+    for sheet_data in process_xl.parse_file(file_path="test.xlsx"):
+        # print(sheet_data)
+        try:
+            save_to_json_file(path="/tmp", file_name=sheet_data["metadata"]['אפיק השקעה'], data=sheet_data)
+        except Exception as ex:
+            logger.error("{0} - Failed to write json file {1}".format(sheet_data["metadata"]['אפיק השקעה'], ex))
