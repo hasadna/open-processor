@@ -4,11 +4,7 @@ from i18n import i18n
 
 
 def test_fields():
-    """
-    Testing the fields loading.
-
-    Foo.
-    """
+    """Testing the fields loading."""
     translator = i18n()
 
     translator.set_fields({"food": "pizza"})
@@ -18,11 +14,7 @@ def test_fields():
 
 
 def test_sheets():
-    """
-    Testing the fields loading.
-
-    Foo.
-    """
+    """Testing the fields loading."""
     translator = i18n()
 
     translator.set_sheets({"food": "pizza"})
