@@ -22,7 +22,8 @@ class ExcelParser:
             """
         # Load in the workbook file
         try:
-            self._workbook = excel_adapter.ExcelLoader(file_path=file_path, logger=self._logger)
+            self._workbook = excel_adapter.ExcelLoader(
+                file_path=file_path, logger=self._logger)
         except Exception as ex:
             self._logger.error("Failed to load {0}".format(ex))
             return False
@@ -39,7 +40,8 @@ class ExcelParser:
             # Parse sheet
             sheet_data = self._parse_sheet(sheet_name=sheet_name)
             if not sheet_name:
-                self._logger.error("Failed to parser sheet {0}".format(sheet_name))
+                self._logger.error(
+                    "Failed to parser sheet {0}".format(sheet_name))
                 continue
             yield sheet_data
 
@@ -123,7 +125,8 @@ class ExcelParser:
                     try:
                         data["data"][data_row[0]][fields_name[i]] = data_row[i]
                     except IndexError as ex:
-                        self._logger.error("Failed {0} {1}".format(ex, fields_name))
+                        self._logger.error(
+                            "Failed {0} {1}".format(ex, fields_name))
 
         return data
 
@@ -162,10 +165,12 @@ class ExcelParser:
         # lambda warp for string find function
         # Finder return True/False , instead of number in find function
         # Check if search word in self._total_data
-        finder = lambda search_word: False if self._total_data.find(search_word) == -1 else True
+        def finder(search_word): return False if self._total_data.find(
+            search_word) == -1 else True
 
         # Get words list and use finder lambda and filter function to check if one or more of word_list in data string
-        recursive_finder = lambda words_list: True if len(list(filter(finder, words_list))) else False
+        def recursive_finder(words_list): return True if len(
+            list(filter(finder, words_list))) else False
 
         if recursive_finder(words_list=self.ISRAEL_WORDS):
             self._is_israel = True
@@ -184,7 +189,7 @@ class FakeLogger:
     def info(self, msg):
         print("info {0}".format(msg))
 
-    def warn(self,msg):
+    def warn(self, msg):
         print("warring {0}".format(msg))
 
 
@@ -207,6 +212,8 @@ if __name__ == '__main__':
     for sheet_data in process_xl.parse_file(file_path="test.xlsx"):
         # print(sheet_data)
         try:
-            save_to_json_file(path="/tmp", file_name=sheet_data["metadata"]['אפיק השקעה'], data=sheet_data)
+            save_to_json_file(
+                path="/tmp", file_name=sheet_data["metadata"]['אפיק השקעה'], data=sheet_data)
         except Exception as ex:
-            logger.error("{0} - Failed to write json file {1}".format(sheet_data["metadata"]['אפיק השקעה'], ex))
+            logger.error(
+                "{0} - Failed to write json file {1}".format(sheet_data["metadata"]['אפיק השקעה'], ex))
