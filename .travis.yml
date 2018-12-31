@@ -7,7 +7,7 @@ install:
   - pip install -U pytest
 
 script:
-  - pycodestyle --show-source --max-line-length=120 --show-pep8
+  - pycodestyle --show-source --max-line-length=120 --show-pep8 .
 
 
   # Running some tests.
