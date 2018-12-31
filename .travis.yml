@@ -1,5 +1,5 @@
 language: python
-python: 3.7
+python: 3.6
 
 install:
   - pip install pycodestyle flake8 isort
@@ -10,4 +10,4 @@ script:
   - pycodestyle --show-source --max-line-length=120 --show-pep8 .
 
   # Running some tests.
-  - python3.7 -m pytest .
+  - python3.6 -m pytest .
