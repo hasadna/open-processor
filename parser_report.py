@@ -1,6 +1,8 @@
 import os
+import sys
 import json
 import excel_adapter
+import mongo_adapter
 
 
 class ExcelParser:
@@ -62,7 +64,7 @@ class ExcelParser:
 
             },
             "data": {}
-            }
+            }k
 
         # Parse metadata, stop when find the first table field
         while current_cell not in self.FIRST_FIELD_TABLE:
@@ -117,7 +119,7 @@ class ExcelParser:
             else:
                 data["data"][data_row[0]] = {
                     'שייכות למדד': self._total_data,
-                    "israel": self._is_israel
+                    "ישראל": self._is_israel
                 }
                 for i in range(1, fields_len):
                     try:
@@ -179,13 +181,13 @@ class ExcelParser:
 
 class FakeLogger:
     def error(self, msg):
-        print("error {0}".format(msg))
+        print("ERROR {0}".format(msg))
 
     def info(self, msg):
-        print("info {0}".format(msg))
+        print("INFO {0}".format(msg))
 
     def warn(self,msg):
-        print("warring {0}".format(msg))
+        print("WARNING {0}".format(msg))
 
 
 def save_to_json_file(path, file_name, data):
@@ -194,7 +196,7 @@ def save_to_json_file(path, file_name, data):
 
     full_path = os.path.join(path, file_name)
     try:
-        with open(f ull_path, "w") as outfile:
+        with open(full_path, "w") as outfile:
             json.dump(data, outfile)
         return True
     except Exception as ex:
@@ -203,10 +205,29 @@ def save_to_json_file(path, file_name, data):
 
 if __name__ == '__main__':
     logger = FakeLogger()
+
+    mongo = mongo_adapter.MongoAdapter(server_address="127.0.0.1", server_port=27017, logger=logger)
+    if not mongo.is_connection:
+        logger.error("Failed to connect mongodb server")
+        sys.exit(1)
+
+    # if not mongo.is_db(db_name="reports_raw"):
+    #     logger.error("db not exist in mongodb server")
+    #     sys.exit(1)
+
     process_xl = ExcelParser(logger=logger)
+
+    for root, dirs, files in os.walk("/home/user/Documents/2018Q1-2"):
+        for file in files:
+            print(os.path.join(root, file))
+
+    """  
+        
     for sheet_data in process_xl.parse_file(file_path="test.xlsx"):
         # print(sheet_data)
-        try:
-            save_to_json_file(path="/tmp", file_name=sheet_data["metadata"]['אפיק השקעה'], data=sheet_data)
-        except Exception as ex:
-            logger.error("{0} - Failed to write json file {1}".format(sheet_data["metadata"]['אפיק השקעה'], ex))
+        # try:
+        # save_to_json_file(path="/tmp", file_name=sheet_data["metadata"]['אפיק השקעה'], data=sheet_data)
+        mongo.insert_document(db_name="reports_raw2", collection_name=sheet_data["metadata"]['אפיק השקעה'], data=sheet_data)
+        # except Exception as ex:
+        #     logger.error("{0} - Failed to write json file {1}".format(sheet_data["metadata"]['אפיק השקעה'], ex))
+"""

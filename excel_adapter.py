@@ -91,6 +91,7 @@ class ExcelLoader:
 
 
 if __name__ == '__main__':
+    # For debug only
     class FakeLogger:
         def error(self, msg):
             print("error {0}".format(msg))
@@ -103,5 +104,5 @@ if __name__ == '__main__':
 
     logger = FakeLogger()
 
-    excel = ExcelAdapter(file_path="test.xlsx", logger=logger)
+    excel = ExcelLoader(file_path="/tmp/s1.xlsx", logger=logger)
     print(excel.get_entire_row(sheet_name="מניות", row=1, min_column=2))
