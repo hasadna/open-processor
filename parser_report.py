@@ -39,13 +39,14 @@ class ExcelParser:
                 # :todo: need parse this sheet ?
                 continue
             # Parse sheet
-            sheet_data = self._parse_sheet(sheet_name=sheet_name)
+            sheet_data = self._parse_sheet(sheet_name=sheet_name, orig_file=file_path)
             if not sheet_name:
                 self._logger.error("Failed to parser sheet {0}".format(sheet_name))
                 continue
+
             yield sheet_data
 
-    def _parse_sheet(self, sheet_name, start_row=0, start_column=2):
+    def _parse_sheet(self, sheet_name, orig_file="", start_row=0, start_column=2):
         """
         Parse excel pension report sheet
         :param sheet_name: sheet name
@@ -58,20 +59,18 @@ class ExcelParser:
         current_cell = None
         row_data = None
 
-        data = {
-            "metadata": {
-                "אפיק השקעה": sheet_name
-
-            },
-            "data": {}
-            }k
+        data = []
+        sheet_metadata = {
+            "Investment": sheet_name,
+            "orig_file" : orig_file
+        }
 
         # Parse metadata, stop when find the first table field
         while current_cell not in self.FIRST_FIELD_TABLE:
             if current_cell:
                 metadata = self._get_metadata(data=row_data)
                 if metadata:
-                    data["metadata"][metadata[0]] = metadata[1]
+                    sheet_metadata[metadata[0]] = metadata[1]
 
             current_row += 1
             row_data = self._workbook.get_entire_row(sheet_name=sheet_name,
@@ -93,7 +92,7 @@ class ExcelParser:
 
         empty_len = 0
         current_cell = ""
-        while current_cell != '* בעל ענין/צד קשור':
+        while current_cell not in  ['* בעל ענין/צד קשור','בהתאם לשיטה שיושמה בדוח הכספי **']:
 
             if empty_len > 5:
                 # self._logger.info("max empty row")
@@ -117,15 +116,22 @@ class ExcelParser:
             if current_cell.find('סה"כ') != -1:
                 self._parse_total_field(current_cell)
             else:
-                data["data"][data_row[0]] = {
+                row = {
+                    'נייר ערך': data_row[0],
                     'שייכות למדד': self._total_data,
                     "ישראל": self._is_israel
                 }
+
                 for i in range(1, fields_len):
                     try:
-                        data["data"][data_row[0]][fields_name[i]] = data_row[i]
+                        row[fields_name[i]] = data_row[i]
                     except IndexError as ex:
                         self._logger.error("Failed {0} {1}".format(ex, fields_name))
+                # Add metadata
+                row.update(sheet_metadata)
+
+                # Add row data to data list
+                data.append(row)
 
         return data
 
@@ -205,21 +211,34 @@ def save_to_json_file(path, file_name, data):
 
 if __name__ == '__main__':
     logger = FakeLogger()
-
+    DB_NAME = "2018Q1"
     mongo = mongo_adapter.MongoAdapter(server_address="127.0.0.1", server_port=27017, logger=logger)
     if not mongo.is_connection:
         logger.error("Failed to connect mongodb server")
         sys.exit(1)
 
-    # if not mongo.is_db(db_name="reports_raw"):
-    #     logger.error("db not exist in mongodb server")
-    #     sys.exit(1)
+    if not mongo.is_db(db_name=DB_NAME):
+        logger.error("db not exist in mongodb server")
+        sys.exit(1)
 
     process_xl = ExcelParser(logger=logger)
 
-    for root, dirs, files in os.walk("/home/user/Documents/2018Q1-2"):
+    for root, dirs, files in os.walk("/home/user/Documents/2018Q1-2/clal"):
         for file in files:
             print(os.path.join(root, file))
+            file_path = os.path.join(root, file)
+            investment_house = os.path.basename(root)
+
+            for sheet_data in process_xl.parse_file(file_path=file_path):
+                if not sheet_data:
+                    print("Not get data from sheet")
+                    continue
+                for data in sheet_data:
+                    if not mongo.insert_document(db_name=DB_NAME,
+                                             collection_name=investment_house,
+                                             data=data):
+                        print("Failed to insert document to mongodb")
+            print("done with {0}".format(file))
 
     """  
         

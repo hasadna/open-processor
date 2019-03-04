@@ -59,8 +59,8 @@ class MongoAdapter():
             except InvalidDocument as ex:
                 print(ex)
                 # print(data)
-            # if document_id:
-                # return document_id.inserted_id
+            if document_id:
+                return document_id
 
         except ServerSelectionTimeoutError as ex:
             self._logger.error("Failed to connect MongoDB server {0}".format(ex))
