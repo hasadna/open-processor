@@ -3,6 +3,7 @@ import sys
 import json
 import excel_adapter
 import mongo_adapter
+from logger import Logger
 
 
 class ExcelParser:
@@ -10,6 +11,7 @@ class ExcelParser:
     NOT_ISRAEL_WORDS = ['מט"ח', 'חוץ לארץ', 'חו"ל']
     ISRAEL_WORDS = ['ישראל', 'בארץ']
     FIRST_FIELD_TABLE = ['שם נ"ע', 'שם המנפיק/שם נייר ערך']
+    MAX_METADATA_ROWS = 10
 
     def __init__(self, logger):
         self._logger = logger
@@ -26,7 +28,7 @@ class ExcelParser:
         try:
             self._workbook = excel_adapter.ExcelLoader(file_path=file_path, logger=self._logger)
         except Exception as ex:
-            self._logger.error("Failed to load {0}".format(ex))
+            self._logger.error("Failed to load {0}, {1}".format(ex,file_path))
             return False
 
         if not self._workbook:
@@ -65,7 +67,8 @@ class ExcelParser:
             "orig_file" : orig_file
         }
 
-        # Parse metadata, stop when find the first table field
+        # Parse metadata, stop when find the first table field or until max metadata
+        start_metadata_row = current_row
         while current_cell not in self.FIRST_FIELD_TABLE:
             if current_cell:
                 metadata = self._get_metadata(data=row_data)
@@ -82,7 +85,12 @@ class ExcelParser:
                 current_cell = row_data[0].strip()
             else:
                 current_cell = None
+
+            if current_row - start_metadata_row > self.MAX_METADATA_ROWS:
+                self._logger.error("Failed to parser sheet. max metadata rows in {0}/{1}".format(orig_file, sheet_name))
+                return None
         else:
+            first_field_table = current_cell
             # Get fields name
             fields_name = self._workbook.get_entire_row(sheet_name=sheet_name,
                                                         row=current_row,
@@ -92,7 +100,7 @@ class ExcelParser:
 
         empty_len = 0
         current_cell = ""
-        while current_cell not in  ['* בעל ענין/צד קשור','בהתאם לשיטה שיושמה בדוח הכספי **']:
+        while current_cell not in ['* בעל ענין/צד קשור','בהתאם לשיטה שיושמה בדוח הכספי **']:
 
             if empty_len > 5:
                 # self._logger.info("max empty row")
@@ -117,21 +125,22 @@ class ExcelParser:
                 self._parse_total_field(current_cell)
             else:
                 row = {
-                    'נייר ערך': data_row[0],
                     'שייכות למדד': self._total_data,
                     "ישראל": self._is_israel
                 }
 
-                for i in range(1, fields_len):
+                for i in range(0, fields_len):
                     try:
-                        row[fields_name[i]] = data_row[i]
+                        row[fields_name[i].strip()] = data_row[i]
                     except IndexError as ex:
                         self._logger.error("Failed {0} {1}".format(ex, fields_name))
-                # Add metadata
-                row.update(sheet_metadata)
 
-                # Add row data to data list
-                data.append(row)
+                # check if stock name not empty
+                if row[first_field_table]:
+                    # Add metadata
+                    row.update(sheet_metadata)
+                    # Add row data to data list
+                    data.append(row)
 
         return data
 
@@ -210,7 +219,7 @@ def save_to_json_file(path, file_name, data):
 
 
 if __name__ == '__main__':
-    logger = FakeLogger()
+    logger = Logger(logger_name="parser_report")
     DB_NAME = "2018Q1"
     mongo = mongo_adapter.MongoAdapter(server_address="127.0.0.1", server_port=27017, logger=logger)
     if not mongo.is_connection:
@@ -223,22 +232,23 @@ if __name__ == '__main__':
 
     process_xl = ExcelParser(logger=logger)
 
-    for root, dirs, files in os.walk("/home/user/Documents/2018Q1-2/clal"):
+    for root, dirs, files in os.walk("/home/user/Documents/2018Q1-2", followlinks=False):
         for file in files:
-            print(os.path.join(root, file))
             file_path = os.path.join(root, file)
             investment_house = os.path.basename(root)
-
+            logger = Logger(logger_name=investment_house)
+            logger.info(msg="Start working on {0} investment house: {1}".format(file_path, investment_house))
             for sheet_data in process_xl.parse_file(file_path=file_path):
                 if not sheet_data:
-                    print("Not get data from sheet")
+                    logger.warn("Not get data from sheet")
                     continue
+
                 for data in sheet_data:
                     if not mongo.insert_document(db_name=DB_NAME,
                                              collection_name=investment_house,
                                              data=data):
                         print("Failed to insert document to mongodb")
-            print("done with {0}".format(file))
+            logger.info("Done with {0}".format(file))
 
     """  
         
