@@ -1,6 +1,6 @@
 import openpyxl
 import os
-
+import datetime
 
 class ExcelLoader:
     def __init__(self, file_path, logger):
@@ -45,7 +45,12 @@ class ExcelLoader:
                 self._logger.warn("sheet name not exists in excel")
                 return None
 
-            return self._workbook[sheet_name].cell(row=row, column=column).value
+            row = self._workbook[sheet_name].cell(row=row, column=column).value
+
+            if isinstance(row, datetime.datetime):
+                return str(row)
+            return row
+
         except Exception as ex:
             raise Exception("Failed to read cell {0}".format(ex))
 
