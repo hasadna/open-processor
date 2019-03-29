@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError, OperationFailure, InvalidName
 from bson.errors import InvalidDocument
+from loggers.fake_logger import FakeLogger
 
 
 class MongoAdapter:
@@ -72,18 +73,6 @@ class MongoAdapter:
         # except Exception as ex:
         #     self._logger.error("Failed to connect MongoDB - unexpected error - {0}".format(ex))
         #     return None
-
-
-# TODO: add logger
-class FakeLogger:
-    def error(self, msg):
-        print("ERROR {0}".format(msg))
-
-    def info(self, msg):
-        print("INFO {0}".format(msg))
-
-    def warning(self, msg):
-        print("WARNING {0}".format(msg))
 
 
 if __name__ == '__main__':

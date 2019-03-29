@@ -1,6 +1,7 @@
 import openpyxl
 import os
 import datetime
+from loggers.fake_logger import FakeLogger
 
 
 class ExcelLoader:
@@ -109,17 +110,6 @@ class ExcelLoader:
 
 
 if __name__ == '__main__':
-    # For debug only
-    class FakeLogger:
-        def error(self, msg):
-            print("error {0}".format(msg))
-
-        def info(self, msg):
-            print("info {0}".format(msg))
-
-        def warn(self, msg):
-            print("warring {0}".format(msg))
-
     logger = FakeLogger()
 
     excel = ExcelLoader(file_path="/tmp/s1.xlsx", logger=logger)

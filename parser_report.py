@@ -2,7 +2,7 @@ import os
 import sys
 import excel_adapter
 import mongo_adapter
-from logger import Logger
+from loggers.logger import Logger
 
 
 class ExcelParser:
@@ -194,62 +194,3 @@ class ExcelParser:
             self._is_israel = True
         elif recursive_finder(words_list=self.NOT_ISRAEL_WORDS):
             self._is_israel = False
-
-
-class FakeLogger:
-    """
-
-    """
-    def error(self, msg):
-        """
-        :param msg:
-        :return:
-        """
-        print("ERROR {0}".format(msg))
-
-    def info(self, msg):
-        """
-
-        :param msg:
-        :return:
-        """
-        print("INFO {0}".format(msg))
-
-    def warn(self, msg):
-        """
-
-        :param msg:
-        :return:
-        """
-        print("WARNING {0}".format(msg))
-
-
-if __name__ == '__main__':
-    logger = Logger(logger_name="parser_report")
-    DB_NAME = "2018Q1"
-    mongo = mongo_adapter.MongoAdapter(server_address="127.0.0.1", server_port=27017, logger=logger)
-    if not mongo.is_connection:
-        logger.error("Failed to connect mongodb server")
-        sys.exit(1)
-
-    if not mongo.is_db(db_name=DB_NAME):
-        logger.error("db not exist in mongodb server")
-        sys.exit(1)
-
-    process_xl = ExcelParser(logger=logger)
-
-    for root, dirs, files in os.walk("/home/user/Documents/2018Q1-2", followlinks=False):
-        for file in files:
-            file_path = os.path.join(root, file)
-            investment_house = os.path.basename(root)
-            logger = Logger(logger_name=investment_house)
-            logger.info(msg="Start working on {0} investment house: {1}".format(file_path, investment_house))
-            for sheet_data in process_xl.parse_file(file_path=file_path):
-                if not sheet_data:
-                    logger.warn("Not get data from sheet")
-                    continue
-
-                for data in sheet_data:
-                    if not mongo.insert_document(db_name=DB_NAME, collection_name=investment_house, data=data):
-                        print("Failed to insert document to mongodb")
-            logger.info("Done with {0}".format(file))
