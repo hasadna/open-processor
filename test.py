@@ -1,8 +1,9 @@
-from logger import Logger
+from parser_report import ExcelParser, FakeLogger
 
-logger = Logger(logger_name="test1")
+path = "C:\\Users\\roy.DM\\Projects\\open_processor\\assets\\513026484_gs.xlsx"
 
-logger.error("Failed 123")
-logger.info("info")
-logger.debug("d")
-logger.warn("w")
+parser = ExcelParser(logger=FakeLogger)
+parsed = parser.parse_file(file_path=path)
+
+print(parsed)
+

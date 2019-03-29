@@ -1,6 +1,5 @@
 import os
 import sys
-import json
 import excel_adapter
 import mongo_adapter
 from logger import Logger
@@ -12,8 +11,11 @@ class ExcelParser:
     ISRAEL_WORDS = ['ישראל', 'בארץ']
     FIRST_FIELD_TABLE = ['שם נ"ע', 'שם המנפיק/שם נייר ערך']
     MAX_METADATA_ROWS = 10
+    SHEETS_TO_SKIP = ['סכום נכסי הקרן']
 
     def __init__(self, logger):
+        # todo: Pull a logger based on settings: A logger that will throw it to logz.io or a logger that will throw it
+        #       to a local DB.
         self._logger = logger
         self._is_israel = None
 
@@ -22,13 +24,12 @@ class ExcelParser:
         Get pension report excel file and parse data by sheet
         Move over all excel data sheet and parse.
 
-        :param file_path: full file path
-        :return: parsed data :type: dictionary
-            """
-        # Load in the workbook file
+        :param file_path:
+            The file path to process.
+        :return:
+        """
         try:
-            self._workbook = excel_adapter.ExcelLoader(
-                file_path=file_path, logger=self._logger)
+            self._workbook = excel_adapter.ExcelLoader(file_path=file_path, logger=self._logger)
         except Exception as ex:
             self._logger.error("Failed to load {0}, {1}".format(ex, file_path))
             return False
@@ -37,27 +38,33 @@ class ExcelParser:
             self._logger.error("Failed to load excel file")
             return False
 
-        # Move over the all sheets
+        # Move over the all sheets.
         for sheet_name in self._workbook.sheet_names:
-            if sheet_name == 'סכום נכסי הקרן':
-                # :todo: need parse this sheet ?
-                continue
-            # Parse sheet
-            sheet_data = self._parse_sheet(sheet_name=sheet_name, orig_file=file_path)
-            if not sheet_name:
-                self._logger.error(
-                    "Failed to parser sheet {0}".format(sheet_name))
+            if sheet_name in self.SHEETS_TO_SKIP:
+                # No need to parse this one since this is a sum of all the other sheets.
                 continue
 
-            yield sheet_data
+            # Parse sheet.
+            sheet_data = self._parse_sheet(sheet_name=sheet_name, orig_file=file_path)
+
+            if not sheet_name:
+                self._logger.error("Failed to parser sheet {0}".format(sheet_name))
+                continue
+
+            return sheet_data
 
     def _parse_sheet(self, sheet_name, orig_file="", start_row=0, start_column=2):
         """
-        Parse excel pension report sheet
-        :param sheet_name: sheet name
-        :param start_row: row number to start
-        :param start_column: column numbrt to start
-        :return: True / False
+        Parse excel pension report sheet.
+
+        :param sheet_name:
+            Sheet name.
+        :param start_row:
+            Row number to start.
+        :param start_column:
+            Column number to start.
+        :return:
+            True / False
         """
         current_row = start_row
         current_column = start_column
@@ -70,21 +77,22 @@ class ExcelParser:
             "orig_file": orig_file
         }
 
-        # Parse metadata, stop when find the first table field or until max metadata
+        # Parse metadata, stop when find the first table field or until max metadata.
         start_metadata_row = current_row
+
         while current_cell not in self.FIRST_FIELD_TABLE:
+
             if current_cell:
                 metadata = self._get_metadata(data=row_data)
+
                 if metadata:
                     sheet_metadata[metadata[0]] = metadata[1]
 
             current_row += 1
-            row_data = self._workbook.get_entire_row(sheet_name=sheet_name,
-                                                     row=current_row,
-                                                     min_column=current_column)
+            row_data = self._workbook.get_entire_row(sheet_name=sheet_name, row=current_row, min_column=current_column)
 
             if row_data:
-                # strip all spaces from start and end string
+                # strip all spaces from start and end string.
                 current_cell = row_data[0].strip()
             else:
                 current_cell = None
@@ -94,41 +102,36 @@ class ExcelParser:
                 return None
         else:
             first_field_table = current_cell
-            # Get fields name
-            fields_name = self._workbook.get_entire_row(sheet_name=sheet_name,
-                                                        row=current_row,
-                                                        min_column=start_column)
-
+            # Get fields name.
+            fields_name = self._workbook.get_entire_row(sheet_name=sheet_name, row=current_row, min_column=start_column)
             fields_len = len(fields_name)
 
         empty_len = 0
         current_cell = ""
+
         while current_cell not in ['* בעל ענין/צד קשור', 'בהתאם לשיטה שיושמה בדוח הכספי **']:
 
             if empty_len > 5:
-                # self._logger.info("max empty row")
                 break
 
-            # Get next row
+            # Get next row.
             current_row += 1
             data_row = self._workbook.get_entire_row(sheet_name=sheet_name,
                                                      row=current_row,
                                                      min_column=start_column,
                                                      max_column=fields_len+start_column)
 
-            # Check if is empty row or first cell is empty
+            # Check if is empty row or first cell is empty.
             if not data_row or not data_row[0]:
                 empty_len += 1
                 continue
 
             current_cell = data_row[0]
-
-            # if current cell start is total row
             if current_cell.find('סה"כ') != -1:
                 self._parse_total_field(current_cell)
             else:
                 row = {
-                    'שייכות למדד': self._total_data,
+                    "שייכות למדד": self._total_data,
                     "ישראל": self._is_israel
                 }
 
@@ -139,19 +142,20 @@ class ExcelParser:
                         self._logger.error(
                             "Failed {0} {1}".format(ex, fields_name))
 
-                # check if stock name not empty
+                # Check if stock name not empty.
                 if row[first_field_table]:
-                    # Add metadata
+                    # Add metadata and add row data to data list.
                     row.update(sheet_metadata)
-                    # Add row data to data list
                     data.append(row)
 
         return data
 
     def _get_metadata(self, data):
         """
-        Parse metadata data
-        :param data: list of data
+        Parse metadata data.
+
+        :param data:
+            The data to parse.
         :return:
         """
         first_cell = data[0]
@@ -160,13 +164,10 @@ class ExcelParser:
             return None, None
 
         finder = first_cell.find(":")
-        # find func return -1 when not find
         if finder != -1:
-            # Check if the colon char is not last data char (The meaning data in the first cell)
+            # Check if the colon char is not last data char (The meaning data in the first cell).
             if len(first_cell) > finder:
                 return first_cell[:finder], first_cell[finder+1:]
-
-        # check if len of data is bigger than one
         elif len(data) > 1:
             return first_cell, data[1]
 
@@ -177,7 +178,6 @@ class ExcelParser:
         :param data:
         :return:
         """
-        # strip 'סה"כ' word
         self._total_data = data.strip('סה"כ')
 
         # lambda warp for string find function
@@ -192,12 +192,8 @@ class ExcelParser:
 
         if recursive_finder(words_list=self.ISRAEL_WORDS):
             self._is_israel = True
-            # print("{0} is israel".format(data))
         elif recursive_finder(words_list=self.NOT_ISRAEL_WORDS):
             self._is_israel = False
-            # print("{0} is not israel".format(data))
-
-        # print(self._total_data)
 
 
 class FakeLogger:
@@ -206,7 +202,6 @@ class FakeLogger:
     """
     def error(self, msg):
         """
-
         :param msg:
         :return:
         """
@@ -227,27 +222,6 @@ class FakeLogger:
         :return:
         """
         print("WARNING {0}".format(msg))
-
-
-def save_to_json_file(path, file_name, data):
-    """
-    Saving file to json file.
-
-    :param path:
-    :param file_name:
-    :param data:
-    :return:
-    """
-    if not os.path.isdir(path):
-        raise Exception("folder not exists {0}".format(path))
-
-    full_path = os.path.join(path, file_name)
-    try:
-        with open(full_path, "w") as outfile:
-            json.dump(data, outfile)
-        return True
-    except Exception as ex:
-        raise ValueError("Failed to write json file {0}".format(ex))
 
 
 if __name__ == '__main__':
@@ -279,15 +253,3 @@ if __name__ == '__main__':
                     if not mongo.insert_document(db_name=DB_NAME, collection_name=investment_house, data=data):
                         print("Failed to insert document to mongodb")
             logger.info("Done with {0}".format(file))
-"""
-    for sheet_data in process_xl.parse_file(file_path="test.xlsx"):
-        # print(sheet_data)
-        # try:
-        # save_to_json_file(path="/tmp", file_name=sheet_data["metadata"]['אפיק השקעה'], data=sheet_data)
-        mongo.insert_document(
-            db_name="reports_raw2",
-            collection_name=sheet_data["metadata"]['אפיק השקעה'],
-            data=sheet_data)
-        # except Exception as ex:
-        #     logger.error("{0} - Failed to write json file {1}".format(sheet_data["metadata"]['אפיק השקעה'], ex))
-"""
