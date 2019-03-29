@@ -1,5 +1,7 @@
 import openpyxl
 import os
+import datetime
+from loggers.fake_logger import FakeLogger
 
 
 class ExcelLoader:
@@ -14,8 +16,10 @@ class ExcelLoader:
 
     def _load_excel(self, file_path):
         """
-        Load excel file
-        :param file_path: full path
+        Load an excel file.
+
+        :param file_path:
+            Full path of the file.
         :return:
         """
         if not os.path.exists(file_path):
@@ -34,10 +38,14 @@ class ExcelLoader:
 
     def get_cell(self, sheet_name, row, column):
         """
-        Get cell value
+        Get cell value.
+
         :param sheet_name:
+            The sheet name.
         :param row:
+            The row of the in the file.
         :param column:
+            Column if the data.
         :return:
         """
         try:
@@ -45,14 +53,20 @@ class ExcelLoader:
                 self._logger.warn("sheet name not exists in excel")
                 return None
 
-            return self._workbook[sheet_name].cell(row=row, column=column).value
+            row = self._workbook[sheet_name].cell(row=row, column=column).value
+
+            if isinstance(row, datetime.datetime):
+                return str(row)
+            return row
+
         except Exception as ex:
             raise Exception("Failed to read cell {0}".format(ex))
 
     def get_entire_row(self, sheet_name, row, min_column=1, max_column=None):
         """
-        Get row between min column number to max column number
-        if max column is None, get all cells until cell data is None
+        Get row between min column number to max column number if max column is None, get all cells until cell data is
+        None.
+
         :param sheet_name:
         :param row:
         :param min_column:
@@ -61,28 +75,28 @@ class ExcelLoader:
         """
 
         if sheet_name not in self.sheet_names:
-            self._logger.warn("sheet name not exists in excel")
+            self._logger.warn("sheet name does not exists in excel")
             return None
 
         cell_data = None
         row_data = []
         column = min_column
 
-        # lambdas function
-        def data_exists(): return True if cell_data else False
+        # lambdas function.
+        def data_exists():
+            return True if cell_data else False
 
-        def is_not_max_column(): return not(max_column == column)
+        def is_not_max_column():
+            return not(max_column == column)
 
-        # If max column than use is_not_max_column lambda to check if is the
-        # max column.
-        # If max column is None, use data_exists lambda to check if cell data
-        # exists.
+        # If max column than use is_not_max_column lambda to check if is the max column.
+        # If max column is None, use data_exists lambda to check if cell data exists.
         if max_column:
             check = is_not_max_column
         else:
             check = data_exists
 
-        # Get cell data
+        # Get cell data.
         cell_data = self.get_cell(
             sheet_name=sheet_name, column=column, row=row)
 
@@ -96,17 +110,7 @@ class ExcelLoader:
 
 
 if __name__ == '__main__':
-    class FakeLogger:
-        def error(self, msg):
-            print("error {0}".format(msg))
-
-        def info(self, msg):
-            print("info {0}".format(msg))
-
-        def warn(self, msg):
-            print("warring {0}".format(msg))
-
     logger = FakeLogger()
 
-    excel = ExcelAdapter(file_path="test.xlsx", logger=logger)
+    excel = ExcelLoader(file_path="/tmp/s1.xlsx", logger=logger)
     print(excel.get_entire_row(sheet_name="מניות", row=1, min_column=2))
