@@ -2,6 +2,7 @@ import openpyxl
 import os
 import datetime
 
+
 class ExcelLoader:
     def __init__(self, file_path, logger):
         self._logger = logger

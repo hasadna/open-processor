@@ -21,7 +21,7 @@ class ExcelParser:
         """
         Get pension report excel file and parse data by sheet
         Move over all excel data sheet and parse.
-        
+
         :param file_path: full file path
         :return: parsed data :type: dictionary
             """
@@ -30,7 +30,7 @@ class ExcelParser:
             self._workbook = excel_adapter.ExcelLoader(
                 file_path=file_path, logger=self._logger)
         except Exception as ex:
-            self._logger.error("Failed to load {0}, {1}".format(ex,file_path))
+            self._logger.error("Failed to load {0}, {1}".format(ex, file_path))
             return False
 
         if not self._workbook:
@@ -67,7 +67,7 @@ class ExcelParser:
         data = []
         sheet_metadata = {
             "Investment": sheet_name,
-            "orig_file" : orig_file
+            "orig_file": orig_file
         }
 
         # Parse metadata, stop when find the first table field or until max metadata
@@ -103,7 +103,7 @@ class ExcelParser:
 
         empty_len = 0
         current_cell = ""
-        while current_cell not in ['* בעל ענין/צד קשור','בהתאם לשיטה שיושמה בדוח הכספי **']:
+        while current_cell not in ['* בעל ענין/צד קשור', 'בהתאם לשיטה שיושמה בדוח הכספי **']:
 
             if empty_len > 5:
                 # self._logger.info("max empty row")
@@ -276,20 +276,17 @@ if __name__ == '__main__':
                     continue
 
                 for data in sheet_data:
-                    if not mongo.insert_document(db_name=DB_NAME,
-                                             collection_name=investment_house,
-                                             data=data):
+                    if not mongo.insert_document(db_name=DB_NAME, collection_name=investment_house, data=data):
                         print("Failed to insert document to mongodb")
             logger.info("Done with {0}".format(file))
-
-    """ 
+"""
     for sheet_data in process_xl.parse_file(file_path="test.xlsx"):
         # print(sheet_data)
         # try:
         # save_to_json_file(path="/tmp", file_name=sheet_data["metadata"]['אפיק השקעה'], data=sheet_data)
         mongo.insert_document(
-            db_name="reports_raw2", 
-            collection_name=sheet_data["metadata"]['אפיק השקעה'], 
+            db_name="reports_raw2",
+            collection_name=sheet_data["metadata"]['אפיק השקעה'],
             data=sheet_data)
         # except Exception as ex:
         #     logger.error("{0} - Failed to write json file {1}".format(sheet_data["metadata"]['אפיק השקעה'], ex))

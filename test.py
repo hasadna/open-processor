@@ -1,8 +1,8 @@
 from logger import Logger
 
-l = Logger(logger_name="test1")
+logger = Logger(logger_name="test1")
 
-l.error("Failed 123")
-l.info("info")
-l.debug("d")
-l.warn("w")
+logger.error("Failed 123")
+logger.info("info")
+logger.debug("d")
+logger.warn("w")

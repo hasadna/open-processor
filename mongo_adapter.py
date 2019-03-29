@@ -2,7 +2,8 @@ from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError, OperationFailure, InvalidName
 from bson.errors import InvalidDocument
 
-class MongoAdapter():
+
+class MongoAdapter:
     def __init__(self, logger, server_address, server_port, user=None, password=None):
         self._server_address = server_address
         self._server_port = server_port
@@ -81,7 +82,7 @@ class FakeLogger:
     def info(self, msg):
         print("INFO {0}".format(msg))
 
-    def warning(self,msg):
+    def warning(self, msg):
         print("WARNING {0}".format(msg))
 
 

@@ -31,6 +31,3 @@ class Logger:
 
     def warn(self, msg):
         self._logger.warning(msg=msg)
-
-
-
