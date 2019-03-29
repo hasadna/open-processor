@@ -38,4 +38,3 @@ print(parsed)
 #                     if not mongo.insert_document(db_name=DB_NAME, collection_name=investment_house, data=data):
 #                         print("Failed to insert document to mongodb")
 #             logger.info("Done with {0}".format(file))
-
