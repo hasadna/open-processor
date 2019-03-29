@@ -6,4 +6,3 @@ parser = ExcelParser(logger=FakeLogger)
 parsed = parser.parse_file(file_path=path)
 
 print(parsed)
-
