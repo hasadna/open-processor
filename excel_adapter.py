@@ -74,23 +74,28 @@ class ExcelLoader:
         column = min_column
 
         # lambdas function
-        data_exists = lambda: True if cell_data else False
-        is_not_max_column = lambda: not(max_column == column)
+        def data_exists(): return True if cell_data else False
 
-        # If max column than use is_not_max_column lambda to check if is the max column
-        # If max column is None, use data_exists lambda to check if cell data exists
+        def is_not_max_column(): return not(max_column == column)
+
+        # If max column than use is_not_max_column lambda to check if is the
+        # max column.
+        # If max column is None, use data_exists lambda to check if cell data
+        # exists.
         if max_column:
             check = is_not_max_column
         else:
             check = data_exists
 
         # Get cell data
-        cell_data = self.get_cell(sheet_name=sheet_name, column=column, row=row)
+        cell_data = self.get_cell(
+            sheet_name=sheet_name, column=column, row=row)
 
         while check():
             row_data.append(cell_data)
             column += 1
-            cell_data = self.get_cell(sheet_name=sheet_name, column=column, row=row)
+            cell_data = self.get_cell(
+                sheet_name=sheet_name, column=column, row=row)
 
         return row_data
 
