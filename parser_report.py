@@ -20,7 +20,8 @@ class ExcelParser:
     def parse_file(self, file_path):
         """
         Get pension report excel file and parse data by sheet
-        Move over all excel data sheet and parse
+        Move over all excel data sheet and parse.
+        
         :param file_path: full file path
         :return: parsed data :type: dictionary
             """
@@ -200,16 +201,43 @@ class ExcelParser:
 
 
 class FakeLogger:
+    """
+
+    """
     def error(self, msg):
+        """
+
+        :param msg:
+        :return:
+        """
         print("ERROR {0}".format(msg))
 
     def info(self, msg):
+        """
+
+        :param msg:
+        :return:
+        """
         print("INFO {0}".format(msg))
 
-    def warn(self,msg):
+    def warn(self, msg):
+        """
+
+        :param msg:
+        :return:
+        """
         print("WARNING {0}".format(msg))
 
+
 def save_to_json_file(path, file_name, data):
+    """
+    Saving file to json file.
+
+    :param path:
+    :param file_name:
+    :param data:
+    :return:
+    """
     if not os.path.isdir(path):
         raise Exception("folder not exists {0}".format(path))
 
@@ -254,13 +282,15 @@ if __name__ == '__main__':
                         print("Failed to insert document to mongodb")
             logger.info("Done with {0}".format(file))
 
-    """  
-        
+    """ 
     for sheet_data in process_xl.parse_file(file_path="test.xlsx"):
         # print(sheet_data)
         # try:
         # save_to_json_file(path="/tmp", file_name=sheet_data["metadata"]['אפיק השקעה'], data=sheet_data)
-        mongo.insert_document(db_name="reports_raw2", collection_name=sheet_data["metadata"]['אפיק השקעה'], data=sheet_data)
+        mongo.insert_document(
+            db_name="reports_raw2", 
+            collection_name=sheet_data["metadata"]['אפיק השקעה'], 
+            data=sheet_data)
         # except Exception as ex:
         #     logger.error("{0} - Failed to write json file {1}".format(sheet_data["metadata"]['אפיק השקעה'], ex))
 """
